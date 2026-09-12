@@ -25,7 +25,6 @@ if uploaded_file and api_key:
 
     if st.button("تصحيح الواجب الآن 📝"):
         with st.spinner("جاري قراءة الورقة وتحليل الإجابات..."):
-            # صياغة التوجيه بناءً على المرحلة الدراسية
             prompt = f"""
             أنت معلم خبير وصابرة ومحفزة جداً. قم بقراءة وتصحيح صورة الواجب المرفقة مع الالتزام بالتعليمات التالية:
             
@@ -47,6 +46,6 @@ if uploaded_file and api_key:
                         ]
                     }
                 ]
-            ]
+            )
             st.success("تم التصحيح بنجاح!")
             st.markdown(response.choices[0].message.content)
