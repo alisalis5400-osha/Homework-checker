@@ -2,38 +2,92 @@ import streamlit as st
 from openai import OpenAI
 import base64
 
-st.title("📚 منصة تصحيح الواجبات الذكية")
-st.write("ارفعي صورة الواجب واختاري المرحلة الدراسية للحصول على تصحيح وشرح مفصل.")
+# إعداد عنوان المنصة
+st.title("📚 المنصة التعليمية الذكية")
+st.write("تصحيح الواجبات وتلخيص المذكرات والصفحات باستعمال الذكاء الاصطناعي")
 
-api_key = st.text_input("أدخلي مفتاح API الخاص بكِ:", type="password")
-
-grade_level = st.selectbox(
-    "اختاري المرحلة الدراسية:",
-    ["المرحلة الابتدائية", "المرحلة الإعدادية (المتوسطة)", "المرحلة الثانوية"]
+# القائمة الجانبية أو خيار تحديد الخدمة
+mode = st.radio(
+    "اختر الخدمة المطلوبة:",
+    ["📝 تصحيح الواجبات", "📄 تلخيص صفحة / مذكرة (بامفلت واسئلة امتحانات)"],
+    horizontal=True
 )
 
-uploaded_file = st.file_uploader("اختر صورة الواجب...", type=["jpg", "jpeg", "png"])
+# اختيار المرحلة الدراسية
+grade_level = st.selectbox(
+    "اختاري المرحلة الدراسية:",
+    ["الثانوية", "المرحلة الإعدادية (المتوسطة)", "المرحلة الابتدائية"]
+)
 
-if uploaded_file and api_key:
-    client = OpenAI(api_key=api_key)
+# رفع الصورة
+uploaded_file = st.file_uploader("ارفعي صورة الواجب أو الصفحة...", type=["jpg", "jpeg", "png"])
+
+if uploaded_file:
+    # قراءة المفتاح تلقائياً وبأمان من Secrets
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    
     bytes_data = uploaded_file.getvalue()
     base64_image = base64.b64encode(bytes_data).decode('utf-8')
 
-    if st.button("تصحيح الواجب الآن 📝"):
-        with st.spinner("جاري قراءة الورقة وتحليل الإجابات..."):
-            prompt = f"أنت معلم خبير وصابرة ومحفزة. قم بقراءة وتصحيح صورة الواجب المرفقة لطالب في ({grade_level}). أثنِ على الإجابات الصحيحة، واشرح الأخطاء بالتفصيل والخطوات بأسلوب مبسط، واختم بكلمات تشجيعية."
-
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+    # 1. قسم تصحيح الواجبات
+    if mode == "📝 تصحيح الواجبات":
+        if st.button("📝 تصحيح الواجب الآن"):
+            with st.spinner("جاري قراءة الورقة وتحليل الإجابات..."):
+                prompt = f"قم بتصحيح هذا الواجب المدرسي لمستوى {grade_level} بأسلوب مبسط، واختم بكلمات تشجيعية."
+                
+                try:
+                    response = client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": prompt},
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": f"data:image/jpeg;base64,{base64_image}"
+                                        }
+                                    }
+                                ]
+                            }
                         ]
-                    }
-                ]
-            )
-            st.success("تم التصحيح بنجاح!")
-            st.markdown(response.choices[0].message.content)
+                    )
+                    st.success("تم التصحيح بنجاح! 🎉")
+                    st.write(response.choices[0].message.content)
+                except Exception as e:
+                    st.error(f"حدث خطأ أثناء التصحيح: {e}")
+
+    # 2. قسم التلخيص بأسلوب البامفلت والامتحانات
+    elif mode == "📄 تلخيص صفحة / مذكرة (بامفلت واسئلة امتحانات)":
+        if st.button("✨ تلخيص الصفحة الآن"):
+            with st.spinner("جاري تلخيص المحتوى وتنسيقه بأسلوب البامفلت والامتحانات..."):
+                prompt = f"""
+                قم بتحليل وتلخيص الصورة المرفقة لمستوى {grade_level} وفق الشروط التالية:
+                1. صمم التلخيص بأسلوب "بامفلت تعليمي" (Pamphlet) جذاب ومقسم إلى نقاط رئيسية وعناوين فرعية واضحة.
+                2. استخرج أهم المصطلحات والقوانين/المفاهيم المحورية الموجودة في الصفحة.
+                3. أضف قسم خاص بعنوان "أسئلة وتوقعات الامتحانات" يتضمن أسئلة متوقعة على هذا الجزء (مثل: علل، قارن، اختر، أو أسئلة مقالية) مع إجاباتها النموذجية المختصرة.
+                """
+                
+                try:
+                    response = client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": prompt},
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": f"data:image/jpeg;base64,{base64_image}"
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    )
+                    st.success("تم إعداد التلخيص والأسئلة بنجاح! 📖")
+                    st.markdown(response.choices[0].message.content)
+                except Exception as e:
+                    st.error(f"حدث خطأ أثناء التلخيص: {e}")
