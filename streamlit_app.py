@@ -1,100 +1,178 @@
-
+import io
+import google.generativeai as genai
+from PIL import Image
 import streamlit as st
-from openai import OpenAI
-import base64
 
-# إعداد عنوان المنصة
-st.title("📚 المنصة التعليمية الذكية")
-st.write("تصحيح الواجبات وتلخيص المذكرات بلغة الورقة المرفوعة تلقائياً مع ترجمة المصطلحات الصعبة")
-
-# القائمة الجانبية أو خيار تحديد الخدمة
-mode = st.radio(
-    "اختر الخدمة المطلوبة:",
-    ["📝 تصحيح الواجبات", "📄 تلخيص صفحة / مذكرة (بامفلت واسئلة امتحانات)"],
-    horizontal=True
+# ضبط إعدادات الصفحة
+st.set_page_config(
+    page_title="المنصة التعليمية الشاملة", page_icon="🎓", layout="centered"
 )
 
-# اختيار المرحلة الدراسية
-grade_level = st.selectbox(
-    "اختاري المرحلة الدراسية:",
-    ["الثانوية", "المرحلة الإعدادية (المتوسطة)", "المرحلة الابتدائية"]
+# الربط بمفتاح الذكاء الاصطناعي من Streamlit Secrets
+if "GEMINI_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+else:
+    st.sidebar.warning(
+        "⚠️ يرجى إضافة GEMINI_API_KEY في Secrets للتشغيل الآلي لتصحيح الصور والملخصات."
+    )
+
+st.title("🎓 المنصة التعليمية الشاملة")
+st.write(
+    "أهلاً بك! اختاري الخدمة التي تحتاجينها من القائمة الجانبية أو الأبواب أعلاه:"
 )
 
-# رفع الصورة
-uploaded_file = st.file_uploader("ارفعي صورة الواجب أو الصفحة...", type=["jpg", "jpeg", "png"])
+# القائمة الرئيسية للمنصة
+tab1, tab2, tab3 = st.tabs(
+    ["📝 الاختبار الإلكتروني", "📸 تصحيح الواجبات", "📚 تلخيص المذكرات"]
+)
 
-if uploaded_file:
-    # قراءة المفتاح تلقائياً وبأمان من Secrets
-    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-    
-    bytes_data = uploaded_file.getvalue()
-    base64_image = base64.b64encode(bytes_data).decode('utf-8')
+# ==========================================
+# 1. قسم الاختبار الإلكتروني
+# ==========================================
+with tab1:
+    st.header("📝 اختبار الدراسات الاجتماعية التفاعلي")
 
-    # 1. قسم تصحيح الواجبات
-    if mode == "📝 تصحيح الواجبات":
-        if st.button("📝 تصحيح الواجب الآن"):
-            with st.spinner("جاري قراءة الورقة وتحديد اللغات والحلول..."):
-                prompt = f"""
-                قم بتحليل وتصحيح هذا الواجب المدرسي لمستوى {grade_level} باتباع القواعد التالية بدقة:
-                1. **لغة الإجابة والتصحيح:** اكتب التصحيح والشرح والملاحظات بنفس اللغة الأساسية المكتوب بها الواجب في الصورة (إذا كانت إنجليزية فاكتب بالإنجليزية، فرنسية بالفرنسية، عربية بالعربية... إلخ).
-                2. إذا كانت المادة مادة علمية أو رياضية (مثل Math أو Science)، استخدم نفس المصطلحات والرموز الواردة بالورقة.
-                3. **قسم الترجمة (Vocabulary/Key Terms):** في نهاية التصحيح، قم بإضافة قسم مخصص بعنوان "💡 ترجمة الكلمات والمصطلحات الهامة" واذكر فيه الكلمات أو المفاهيم الصعبة الواردة بالورقة مع ترجمتها وشرحها المباشر باللغة العربية.
-                """
-                
+    student_name = st.text_input("اسم الطالب رباعياً:", key="quiz_name")
+    student_class = st.selectbox(
+        "المرحلة الدراسية:",
+        [
+            "الصف الأول الإعدادي",
+            "الصف الثاني الإعدادي",
+            "الصف الثالث الإعدادي",
+        ],
+        key="quiz_class",
+    )
+
+    st.divider()
+
+    # بنك الأسئلة المقالية والنموذجية
+    questions = [
+        {
+            "id": 1,
+            "question": "بم تفسر: يُطلق على قارتي آسيا وأوروبا معاً مصطلح 'أوراسيا'؟",
+            "model_answer": "لأن قارة أوروبا تبدو وكأنها امتداد طبيعي لقارة آسيا من جهة الغرب.",
+        },
+        {
+            "id": 2,
+            "question": "ما المقصود بـ 'الأرخبيل'؟",
+            "model_answer": "مجموعة من الجزُر المتجاورة في مسطح مائي (مثل: أرخبيل اليابان وإندونيسيا).",
+        },
+        {
+            "id": 3,
+            "question": "بم تفسر: استخدام التيتانيوم في صناعة هياكل الطائرات والصواريخ؟",
+            "model_answer": "لأنه يتميز بخفة وزنه وصلابته العالية ومقاومته الكبيرة للتآكل.",
+        },
+        {
+            "id": 4,
+            "question": "ما النتائج المترتبة على: تعرج سواحل قارة أوروبا وكثرة جزرها؟",
+            "model_answer": "أدى ذلك إلى سهولة إنشاء الموانئ الطبيعية وتسهيل الاتصال بالعالم الخارجي.",
+        },
+        {
+            "id": 5,
+            "question": "بم تفسر: شهرة الملك حمورابي في تاريخ العراق القديم؟",
+            "model_answer": "لأنه وضع مجموعة من القوانين تضمنت مختلف جوانب الحياة وكفلت حقوق المرأة.",
+        },
+    ]
+
+    user_answers = {}
+
+    for q in questions:
+        st.subheader(f"س{q['id']}: {q['question']}")
+        user_answers[q["id"]] = st.text_area(
+            "اكتب إجابتك هنا:", key=f"ans_{q['id']}"
+        )
+
+    st.divider()
+
+    if st.button("إرسال التقييم وعرض النتيجة 🚀"):
+        if not student_name:
+            st.warning("⚠️ يرجى كتابة اسمك أولاً قبل تسليم الاختبار!")
+        else:
+            st.success(f"تم تسليم الإجابات بنجاح يا {student_name}!")
+            st.subheader("📊 تقرير الإجابات والتقييم:")
+
+            summary_text = f"تقرير الطالب: {student_name}\nالمرحلة: {student_class}\n\n=========================\n\n"
+
+            for q in questions:
+                ans = user_answers[q["id"]]
+                st.markdown(f"**س{q['id']}: {q['question']}**")
+                st.write(f"✍️ **إجابتك:** {ans if ans else 'لم يتم الإجابة'}")
+                st.info(f"💡 **الإجابة النموذجية:** {q['model_answer']}")
+                st.divider()
+
+                summary_text += f"س{q['id']}: {q['question']}\nإجابة الطالب: {ans if ans else 'لم يتم الإجابة'}\nالإجابة النموذجية: {q['model_answer']}\n-------------------\n"
+
+            st.download_button(
+                label="📥 تحميل تقرير إجاباتك",
+                data=summary_text,
+                file_name=f"اختبار_{student_name}.txt",
+                mime="text/plain",
+            )
+
+# ==========================================
+# 2. قسم تصحيح الواجبات الذكي
+# ==========================================
+with tab2:
+    st.header("📸 تصحيح أوراق الواجب")
+    st.write(
+        "ارفعي صورة ورقة الواجب الخاصة بالطالب، وسيقوم الذكاء الاصطناعي بتصحيحها وتوضيح الأخطاء."
+    )
+
+    uploaded_hw = st.file_uploader(
+        "اختر صورة الواجب:", type=["jpg", "jpeg", "png"], key="hw_file"
+    )
+
+    if uploaded_hw is not None:
+        image = Image.open(uploaded_hw)
+        st.image(
+            image, caption="صورة الواجب المرفوعة", use_container_width=True
+        )
+
+        if st.button("تصحيح الواجب الآن ✨"):
+            with st.spinner("جاري تحليل ورقة الواجب وتصحيحها..."):
                 try:
-                    response = client.chat.completions.create(
-                        model="gpt-4o",
-                        messages=[
-                            {
-                                "role": "user",
-                                "content": [
-                                    {"type": "text", "text": prompt},
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {
-                                            "url": f"data:image/jpeg;base64,{base64_image}"
-                                        }
-                                    }
-                                ]
-                            }
-                        ]
-                    )
-                    st.success("تم التصحيح بنجاح! 🎉")
-                    st.markdown(response.choices[0].message.content)
+                    model = genai.GenerativeModel("gemini-1.5-flash")
+                    prompt = "أنت معلم محترف. قم بفحص صورة الواجب هذه، واستخرج الإجابات الخاطئة وحدد الإجابة الصحيحة مع شرح بسيط لسبب الخطأ بأسلوب تشجيعي للطفل."
+                    response = model.generate_content([prompt, image])
+                    st.success("تم تصحيح الواجب بنجاح!")
+                    st.markdown(response.text)
                 except Exception as e:
-                    st.error(f"حدث خطأ أثناء التصحيح: {e}")
+                    st.error(
+                        "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. تأكدي من ضبط API Key."
+                    )
 
-    # 2. قسم التلخيص بأسلوب البامفلت والامتحانات
-    elif mode == "📄 تلخيص صفحة / مذكرة (بامفلت واسئلة امتحانات)":
-        if st.button("✨ تلخيص الصفحة الآن"):
-            with st.spinner("جاري التلخيص وإعداد أسئلة الامتحانات..."):
-                prompt = f"""
-                قم بتحليل وتلخيص الصورة المرفقة لمستوى {grade_level} وفق الشروط التالية:
-                1. **لغة التلخيص:** اكتب التلخيص والأسئلة بنفس اللغة الأساسية للورقة المرفوعة في الصورة (مثل الفرنساوي، الإنجليزي، أو العربي).
-                2. صمم التلخيص بأسلوب "بامفلت تعليمي" (Pamphlet) جذاب ومقسم لنقاط رئيسية وعناوين فرعية.
-                3. أضف قسم "أسئلة وتوقعات الامتحانات" يتضمن أسئلة متوقعة بنفس لغة النص وإجاباتها النموذجية.
-                4. **قسم الترجمة والمصطلحات:** أضف في نهاية التلخيص قسماً خاصاً يستخرج الكلمات والمصطلحات الصعبة/الرئيسية في الصفحة ويرجمها إلى اللغة العربية.
-                """
-                
+# ==========================================
+# 3. قسم تلخيص المذكرات والدروس
+# ==========================================
+with tab3:
+    st.header("📚 تلخيص المذكرات والدروس")
+    st.write(
+        "ارفعي صورة صفحة المذكرة أو كتاب الدرس للتحصلين على ملخص سريع لأهم المفاط النقاط والعناوين."
+    )
+
+    uploaded_doc = st.file_uploader(
+        "اختر صورة المذكرة/الدرس:",
+        type=["jpg", "jpeg", "png"],
+        key="doc_file",
+    )
+
+    if uploaded_doc is not None:
+        doc_image = Image.open(uploaded_doc)
+        st.image(
+            doc_image,
+            caption="صورة المذكرة المرفوعة",
+            use_container_width=True,
+        )
+
+        if st.button("تلخيص الدرس الآن 📝"):
+            with st.spinner("جاري قراءة المذكرة وتلخيصها..."):
                 try:
-                    response = client.chat.completions.create(
-                        model="gpt-4o",
-                        messages=[
-                            {
-                                "role": "user",
-                                "content": [
-                                    {"type": "text", "text": prompt},
-                                    {
-                                        "type": "image_url",
-                                        "image_url": {
-                                            "url": f"data:image/jpeg;base64,{base64_image}"
-                                        }
-                                    }
-                                ]
-                            }
-                        ]
-                    )
-                    st.success("تم إعداد التلخيص والأسئلة بنجاح! 📖")
-                    st.markdown(response.choices[0].message.content)
+                    model = genai.GenerativeModel("gemini-1.5-flash")
+                    prompt = "قم بقراءة المحتوى التعليمي في هذه الصورة وتلخيصه في نقاط رئيسية مركزة وسهلة للحفظ والمراجعة للطلاب."
+                    response = model.generate_content([prompt, doc_image])
+                    st.success("تم تلخيص الدرس بنجاح!")
+                    st.markdown(response.text)
                 except Exception as e:
-                    st.error(f"حدث خطأ أثناء التلخيص: {e}")
+                    st.error(
+                        "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. تأكدي من ضبط API Key."
+                    )
