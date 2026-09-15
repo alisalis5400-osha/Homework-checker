@@ -30,15 +30,14 @@ with tab1:
         if st.button("🚀 تصحيح الواجب الآن", key="btn_hw"):
             with st.spinner("جاري قراءة الورقة وتحليل الإجابات..."):
                 try:
-                    # تحويل الصورة لتنسيق خفيف ومناسب للرفع المباشر
                     image_bytes = uploaded_file.getvalue()
                     image_data = {
                         "mime_type": uploaded_file.type,
                         "data": image_bytes,
                     }
 
-                    # تحديد النموذج المعتمد والسريع
-                    model = genai.GenerativeModel("gemini-2.5-flash")
+                    # استخدام النموذج المطلوب في التنبيه
+                    model = genai.GenerativeModel("gemini-3.6-flash")
 
                     prompt = "اقرأ الأسئلة والإجابات المكتوبة بخط اليد في هذه الصورة. صحح الأخطاء واكتب الإجابات الصحيحة والتصحيح بأسلوب بسيط ومباشر."
 
@@ -60,7 +59,7 @@ with tab2:
         if lesson_text.strip():
             with st.spinner("جاري التلخيص..."):
                 try:
-                    model = genai.GenerativeModel("gemini-2.5-flash")
+                    model = genai.GenerativeModel("gemini-3.6-flash")
                     prompt = "لخص هذا الدرس في نقاط رئيسية بسيطة للمذاكرة."
                     response = model.generate_content([prompt, lesson_text])
 
