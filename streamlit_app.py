@@ -1,12 +1,11 @@
 import google.generativeai as genai
-from PIL import Image
 import streamlit as st
 
 st.set_page_config(
     page_title="المنصة التعليمية السريعة", page_icon="⚡", layout="centered"
 )
 
-# التأكد من المفتاح
+# 1. التأكد من وجود المفتاح
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
@@ -28,15 +27,21 @@ with tab1:
         if st.button("🚀 تصحيح الواجب الآن", key="btn_hw"):
             with st.spinner("جاري قراءة الورقة وتحليل الإجابات..."):
                 try:
-                    # فتح الصورة وتحويلها
-                    img = Image.open(uploaded_file)
+                    # تحويل ملف الصورة المحمل إلى صيغة يفهمها الموديل مباشرة
+                    image_bytes = uploaded_file.getvalue()
+                    image_parts = [
+                        {
+                            "mime_type": uploaded_file.type,
+                            "data": image_bytes,
+                        }
+                    ]
 
-                    # استخدام النموذج الأحدث والسريع
+                    # استدعاء الموديل المعتمد والأسرع للصور
                     model = genai.GenerativeModel("gemini-1.5-flash")
 
-                    prompt = "اقرأ الأسئلة والإجابات بخط اليد من الصورة. اكتب الأسئلة موضحاً الإجابة الصحيحة والإجابة الخاطئة إن وجدت مع التصحيح بأسلوب بسيط."
+                    prompt = "اقرأ الأسئلة والإجابات المكتوبة بخط اليد في هذه الصورة. صحح الأخطاء واكتب الإجابات الصحيحة والتصحيح بأسلوب بسيط ومباشر."
 
-                    response = model.generate_content([prompt, img])
+                    response = model.generate_content([prompt, image_parts[0]])
 
                     st.markdown("### 📊 نتيجة التصحيح:")
                     st.write(response.text)
